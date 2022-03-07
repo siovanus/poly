@@ -20,16 +20,12 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/polynetwork/poly/native/service/cross_chain_manager/consensus_vote"
-	"github.com/polynetwork/poly/native/service/cross_chain_manager/pixiechain"
-
-	"github.com/polynetwork/poly/native/service/cross_chain_manager/zilliqa"
-
 	"github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/native"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/bsc"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/btc"
 	scom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
+	"github.com/polynetwork/poly/native/service/cross_chain_manager/consensus_vote"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/cosmos"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/eth"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/heco"
@@ -38,9 +34,12 @@ import (
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/neo3"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/okex"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/ont"
+	"github.com/polynetwork/poly/native/service/cross_chain_manager/pixiechain"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/polygon"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/quorum"
+	"github.com/polynetwork/poly/native/service/cross_chain_manager/ripple"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/starcoin"
+	"github.com/polynetwork/poly/native/service/cross_chain_manager/zilliqa"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/zilliqalegacy"
 	"github.com/polynetwork/poly/native/service/governance/node_manager"
 	"github.com/polynetwork/poly/native/service/governance/side_chain_manager"
@@ -50,15 +49,18 @@ import (
 const (
 	IMPORT_OUTER_TRANSFER_NAME = "ImportOuterTransfer"
 	MULTI_SIGN                 = "MultiSign"
+	MULTI_SIGN_RIPPLE          = "MultiSignRipple"
 	BLACK_CHAIN                = "BlackChain"
 	WHITE_CHAIN                = "WhiteChain"
 
-	BLACKED_CHAIN = "BlackedChain"
+	// storage prefix
+	BLACKED_CHAIN  = "BlackedChain"
 )
 
 func RegisterCrossChainManagerContract(native *native.NativeService) {
 	native.Register(IMPORT_OUTER_TRANSFER_NAME, ImportExTransfer)
 	native.Register(MULTI_SIGN, MultiSign)
+	native.Register(MULTI_SIGN_RIPPLE, MultiSignRipple)
 
 	native.Register(BLACK_CHAIN, BlackChain)
 	native.Register(WHITE_CHAIN, WhiteChain)
@@ -167,6 +169,15 @@ func ImportExTransfer(native *native.NativeService) ([]byte, error) {
 		}
 		return utils.BYTE_TRUE, nil
 	}
+	// ripple chain's chain name must be "ripple"
+	// can not use chainId and router here
+	if sideChain.Name == "ripple" {
+		err := ripple.NewRippleHandler().MakeTransaction(native, txParam, chainID)
+		if err != nil {
+			return utils.BYTE_FALSE, err
+		}
+		return utils.BYTE_TRUE, nil
+	}
 
 	//NOTE, you need to store the tx in this
 	err = MakeTransaction(native, txParam, chainID)
@@ -178,6 +189,17 @@ func ImportExTransfer(native *native.NativeService) ([]byte, error) {
 
 func MultiSign(native *native.NativeService) ([]byte, error) {
 	handler := btc.NewBTCHandler()
+
+	//1. multi sign
+	err := handler.MultiSign(native)
+	if err != nil {
+		return utils.BYTE_FALSE, err
+	}
+	return utils.BYTE_TRUE, nil
+}
+
+func MultiSignRipple(native *native.NativeService) ([]byte, error) {
+	handler := ripple.NewRippleHandler()
 
 	//1. multi sign
 	err := handler.MultiSign(native)

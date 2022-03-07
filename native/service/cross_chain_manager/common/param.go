@@ -28,6 +28,7 @@ var (
 	KEY_PREFIX_BTC_VOTE = "btcVote"
 	REQUEST             = "request"
 	DONE_TX             = "doneTx"
+	MULTISIGN_INFO      = "multisignInfo"
 
 	NOTIFY_MAKE_PROOF = "makeProof"
 )
